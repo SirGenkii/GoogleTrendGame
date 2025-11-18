@@ -15,5 +15,9 @@ RUN composer install --no-scripts --no-autoloader
 COPY . .
 
 RUN composer install
+RUN chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache
+
+# Expose php-fpm to other containers (nginx)
+RUN sed -i 's/^listen = .*/listen = 0.0.0.0:9000/' /usr/local/etc/php-fpm.d/www.conf
 
 CMD ["php-fpm"]

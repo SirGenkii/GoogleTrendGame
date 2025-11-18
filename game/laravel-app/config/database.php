@@ -98,6 +98,21 @@ return [
             'sslmode' => 'prefer',
         ],
 
+        'data' => [
+            'driver' => env('DATA_DB_CONNECTION', 'pgsql'),
+            'url' => null,
+            'host' => env('DATA_DB_HOST', '127.0.0.1'),
+            'port' => env('DATA_DB_PORT', '5432'),
+            'database' => env('DATA_DB_DATABASE', 'data'),
+            'username' => env('DATA_DB_USERNAME', 'data'),
+            'password' => env('DATA_DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

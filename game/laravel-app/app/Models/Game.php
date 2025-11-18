@@ -42,4 +42,9 @@ class Game extends Model
     {
         return $this->belongsTo(Player::class, 'host_player_id');
     }
+
+    public function getRouteKeyName(): string
+    {
+        return 'code';
+    }
 }

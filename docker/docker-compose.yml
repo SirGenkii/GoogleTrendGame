@@ -64,7 +64,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
-      - ../game/laravel-app/.env.example
+      - ../game/laravel-app/.env
     environment:
       DB_CONNECTION: pgsql
       DB_HOST: game-db
