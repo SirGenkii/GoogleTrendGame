@@ -34,12 +34,14 @@
         .ended { border: 2px solid #22c55e; animation: flash 1.5s ease; }
         .flash { animation: pulse 1s ease; }
         .disabled { opacity: 0.6; pointer-events: none; }
+        .correct { color: #16a34a; font-weight: 600; }
+        .wrong { color: #dc2626; font-weight: 600; }
         @keyframes flash { 0% { background: #ecfdf3; } 100% { background: #fff; } }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
-<body>
+<body data-player-id="{{ $playerId ?? '' }}">
     <header>
         <div class="container">
             <div class="topbar">
@@ -103,25 +105,29 @@
                 }
             }
 
-            // Polling for players / answers / leaderboard
+            // Polling for players / answers / leaderboard et détection de nouveau round
             const currentRoundWrapper = document.querySelector('[data-current-round-id]');
             const answersList = document.getElementById('answers-list');
             const leaderboardList = document.getElementById('leaderboard');
             const playersList = document.getElementById('players-list');
+            const gameCode = playersList?.dataset.gameCode;
+            const submissionList = document.getElementById('submission-list');
+            const playerId = document.body.dataset.playerId || '';
+            const resultsCard = document.getElementById('results-card');
+            const resultsDetails = document.getElementById('results-details');
+
+            const renderList = (el, items) => {
+                if (!el) return;
+                el.innerHTML = '';
+                items.forEach((text) => {
+                    const li = document.createElement('li');
+                    li.textContent = text;
+                    el.appendChild(li);
+                });
+            };
+
             if (currentRoundWrapper) {
                 const roundId = currentRoundWrapper.dataset.currentRoundId;
-                const gameCode = playersList?.dataset.gameCode;
-
-                const renderList = (el, items) => {
-                    if (!el) return;
-                    el.innerHTML = '';
-                    items.forEach((text) => {
-                        const li = document.createElement('li');
-                        li.textContent = text;
-                        el.appendChild(li);
-                    });
-                };
-
                 const poll = async () => {
                     try {
                         const r = await fetch(`/api/rounds/${roundId}`);
@@ -136,13 +142,16 @@
                         if (leaderboardList && data.leaderboard) {
                             renderList(leaderboardList, data.leaderboard.map(l => `${l.player?.name ?? 'Player #' + l.player_id} : ${l.total_score} pts`));
                         }
+                        const articlesMap = new Map((data.question_articles || []).map(qa => [qa.title, qa]));
                         if (data.round?.correct_order) {
                             const correctList = document.getElementById('correct-order');
                             if (correctList) {
                                 correctList.innerHTML = '';
                                 data.round.correct_order.forEach((a) => {
                                     const li = document.createElement('li');
-                                    li.textContent = a;
+                                    const detail = articlesMap.get(a);
+                                    li.textContent = `${a} (${detail?.views_avg_daily ?? '?'} moy/j)`;
+                                    li.className = 'correct';
                                     correctList.appendChild(li);
                                 });
                             }
@@ -152,34 +161,75 @@
                             if (sortableInst) sortableInst.option('disabled', true);
                             document.querySelectorAll('[data-sortable-list] .list-item').forEach((li) => li.classList.add('disabled'));
                         }
+                        if (submissionList && playerId && data.answers) {
+                            const mine = data.answers.find(a => String(a.player_id) === String(playerId));
+                            submissionList.innerHTML = '';
+                            if (mine && mine.submitted_order && data.question_articles) {
+                                mine.submitted_order.forEach((title, idx) => {
+                                    const li = document.createElement('li');
+                                    const correctTitle = data.round.correct_order?.[idx];
+                                    const articleDetail = articlesMap.get(title);
+                                    li.textContent = `${idx + 1}. ${title} (${articleDetail?.views_avg_daily ?? '?'} moy/j)`;
+                                    li.className = correctTitle === title ? 'correct' : 'wrong';
+                                    submissionList.appendChild(li);
+                                });
+                            }
+                        }
+                        if (resultsCard && resultsDetails && (data.ended || data.allPlayersAnswered) && data.answers) {
+                            resultsCard.style.display = 'block';
+                            resultsDetails.innerHTML = '';
+                            data.answers.forEach((a) => {
+                                const block = document.createElement('div');
+                                block.style.marginBottom = '8px';
+                                const title = document.createElement('div');
+                                title.innerHTML = `<strong>${a.player?.name ?? 'Player #' + a.player_id}</strong> - ${a.score} pts`;
+                                block.appendChild(title);
+                                const ol = document.createElement('ol');
+                                (a.submitted_order || []).forEach((title, idx) => {
+                                    const li = document.createElement('li');
+                                    const correctTitle = data.round.correct_order?.[idx];
+                                    const articleDetail = articlesMap.get(title);
+                                    li.textContent = `${idx + 1}. ${title} (${articleDetail?.views_avg_daily ?? '?'} moy/j)`;
+                                    li.className = correctTitle === title ? 'correct' : 'wrong';
+                                    ol.appendChild(li);
+                                });
+                                block.appendChild(ol);
+                                resultsDetails.appendChild(block);
+                            });
+                        }
                     } catch (e) {
                         // ignore
                     }
                     setTimeout(poll, 2000);
                 };
 
-                const pollPlayers = async () => {
-                    if (!gameCode || !playersList) return;
-                    try {
-                        const r = await fetch(`/api/games/${gameCode}`);
-                        if (!r.ok) return;
-                        const data = await r.json();
-                        playersList.innerHTML = '';
-                        data.players.forEach(p => {
-                            const li = document.createElement('li');
-                            li.className = 'list-item';
-                            li.textContent = p.name + (p.is_host ? ' (host)' : '');
-                            playersList.appendChild(li);
-                        });
-                    } catch (e) {
-                        // ignore
-                    }
-                    setTimeout(pollPlayers, 4000);
-                };
-
                 poll();
-                pollPlayers();
             }
+
+            const pollPlayers = async () => {
+                if (!gameCode || !playersList) return;
+                try {
+                    const r = await fetch(`/api/games/${gameCode}`);
+                    if (!r.ok) return;
+                    const data = await r.json();
+                    playersList.innerHTML = '';
+                    data.players.forEach(p => {
+                        const li = document.createElement('li');
+                        li.className = 'list-item';
+                        li.textContent = p.name + (p.is_host ? ' (host)' : '');
+                        playersList.appendChild(li);
+                    });
+                    const currentId = currentRoundWrapper ? currentRoundWrapper.dataset.currentRoundId : null;
+                    if (data.current_round_id && data.current_round_id != currentId) {
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    // ignore
+                }
+                setTimeout(pollPlayers, 3000);
+            };
+
+            pollPlayers();
 
             // Ajax submit answer to avoid full reload
             const answerForm = document.getElementById('answer-form');
@@ -187,6 +237,10 @@
                 answerForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const fd = new FormData(answerForm);
+                    fd.delete('submitted_order[]');
+                    document.querySelectorAll('[data-sortable-list] [data-article]').forEach((li, idx) => {
+                        fd.append(`submitted_order[${idx}]`, li.dataset.article);
+                    });
                     try {
                         const resp = await fetch(answerForm.action, {
                             method: 'POST',

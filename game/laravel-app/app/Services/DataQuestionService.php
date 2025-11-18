@@ -12,7 +12,10 @@ class DataQuestionService
         $query = DB::connection('data')
             ->table('questions')
             ->join('themes', 'questions.theme_id', '=', 'themes.id')
-            ->where('questions.status', 'ready');
+            ->join('question_articles', 'questions.id', '=', 'question_articles.question_id')
+            ->where('questions.status', 'ready')
+            ->groupBy('questions.id', 'themes.name', 'questions.year', 'questions.semester')
+            ->havingRaw('COUNT(question_articles.id) = 4');
 
         if ($theme) {
             $query->where('themes.name', $theme);

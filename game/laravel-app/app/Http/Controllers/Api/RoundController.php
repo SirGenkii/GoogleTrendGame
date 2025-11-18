@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Answer;
 use App\Models\Game;
 use App\Models\Round;
 use App\Services\DataQuestionService;
@@ -20,8 +21,13 @@ class RoundController extends Controller
     {
         $round->load(['answers.player', 'game.players']);
 
-        // Marque la manche terminée si le délai est passé
-        if ($round->status !== 'ended' && $round->deadline_at && now()->greaterThanOrEqualTo($round->deadline_at)) {
+        // Marque la manche terminée si le délai est passé ou si tous ont répondu
+        $playersCount = $round->game->players()->count();
+        $answersCount = $round->answers()->count();
+        if ($round->status !== 'ended' && (
+            ($round->deadline_at && now()->greaterThanOrEqualTo($round->deadline_at)) ||
+            ($playersCount > 0 && $answersCount >= $playersCount)
+        )) {
             $round->status = 'ended';
             $round->ended_at = now();
             $round->save();
@@ -58,7 +64,25 @@ class RoundController extends Controller
             'leaderboard' => $leaderboard,
             'ended' => $round->status === 'ended',
             'allPlayersAnswered' => $round->game->players()->count() > 0 && $round->answers()->count() >= $round->game->players()->count(),
+            'question_articles' => $this->getQuestionArticles($round),
         ]);
+    }
+
+    private function getQuestionArticles(Round $round): array
+    {
+        if (!$round->question_id) {
+            return [];
+        }
+        return \DB::connection('data')
+            ->table('question_articles')
+            ->join('articles', 'question_articles.article_id', '=', 'articles.id')
+            ->where('question_id', $round->question_id)
+            ->get([
+                'articles.title',
+                'question_articles.views_total',
+                'question_articles.views_avg_daily',
+            ])
+            ->toArray();
     }
 
     public function store(Request $request, Game $game): JsonResponse

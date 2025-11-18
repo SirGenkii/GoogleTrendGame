@@ -87,19 +87,27 @@
             </ul>
         </div>
 
-        @if($currentRound->correct_order)
-            <div class="card">
-                <h3>Ordre réel (du moins au plus consulté)</h3>
-                <ol id="correct-order">
-                    @foreach($currentRound->correct_order as $article)
-                        <li>{{ $article }}</li>
-                    @endforeach
-                </ol>
-            </div>
-        @endif
-    @else
-        <div class="card">Aucune manche en cours.</div>
+    @if($currentRound->correct_order)
+        <div class="card">
+            <h3>Ordre réel (du moins au plus consulté)</h3>
+            <ol id="correct-order">
+                @foreach($currentRound->correct_order as $article)
+                    <li>{{ $article }}</li>
+                @endforeach
+            </ol>
+        </div>
     @endif
+    <div class="card">
+        <h3>Ta proposition</h3>
+        <ol id="submission-list" class="muted"></ol>
+    </div>
+    <div class="card" id="results-card" style="display:none;">
+        <h3>Résumé des réponses</h3>
+        <div id="results-details"></div>
+    </div>
+@else
+    <div class="card">Aucune manche en cours.</div>
+@endif
 
     @if(!empty($leaderboard))
         <div class="card">
