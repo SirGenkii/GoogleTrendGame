@@ -2,6 +2,8 @@
 
 Service data Python (pageviews Wikimedia) + backend Laravel pour le jeu de classement d’articles Wikipédia.
 
+Mon discord pour discuter et s'organiser : julienb1506
+
 ## Démarrage rapide
 - Prérequis : Docker + Docker Compose, `make`, Python 3.x pour le venv local du service data.
 - Lancer l’infra (DBs + Laravel + Nginx) : `make up`. Si Dockerfile modifié : `make rebuild`.
