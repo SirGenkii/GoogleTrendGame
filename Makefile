@@ -40,6 +40,9 @@ activate: $(PYTHON)
 data-init-db: $(PYTHON)
 	$(DATA_ENV) $(PYTHON) -m wiki_service.cli init-db
 
+data-upgrade-db: $(PYTHON)
+	$(DATA_ENV) $(PYTHON) -m wiki_service.cli upgrade-db
+
 data-seed: $(PYTHON)
 	$(DATA_ENV) $(PYTHON) -m wiki_service.cli seed
 
@@ -57,6 +60,15 @@ data-generate-range: $(PYTHON)
 
 data-shell:
 	$(COMPOSE) run --rm data-app bash
+
+data-db-reset:
+	$(COMPOSE) stop data-app
+	$(COMPOSE) stop data-db
+	$(COMPOSE) rm -f data-db
+	$(COMPOSE) up -d data-db
+	sleep 2
+	$(MAKE) data-init-db
+	$(MAKE) data-upgrade-db
 
 game-shell:
 	$(COMPOSE) run --rm game-app bash

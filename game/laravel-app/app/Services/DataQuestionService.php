@@ -44,6 +44,8 @@ class DataQuestionService
             ->where('question_articles.question_id', $question->id)
             ->get([
                 'articles.title',
+                'articles.summary',
+                'articles.image_url',
                 'question_articles.views_total',
                 'question_articles.views_avg_daily',
             ]);

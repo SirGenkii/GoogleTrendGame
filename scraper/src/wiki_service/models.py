@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint, ForeignKey, Float, JSON
+from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint, ForeignKey, Float, JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -37,6 +37,8 @@ class Article(Base, TimestampMixin):
     slug: Mapped[str] = mapped_column(String(255), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     page_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
 
     themes: Mapped[List["ArticleTheme"]] = relationship("ArticleTheme", back_populates="article")
     stats: Mapped[List["ArticleSemesterStat"]] = relationship("ArticleSemesterStat", back_populates="article")

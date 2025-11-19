@@ -10,6 +10,7 @@ from typing import Optional
 import typer
 import httpx
 from tabulate import tabulate
+from sqlalchemy import text
 
 from .config import get_settings
 from .db import Base, engine, get_session
@@ -46,6 +47,19 @@ def init_db() -> None:
     typer.echo("Création des tables...")
     Base.metadata.create_all(bind=engine)
     typer.echo("OK.")
+
+
+@app.command()
+def upgrade_db() -> None:
+    """Ajoute les colonnes manquantes lors des évolutions du schéma."""
+    statements = [
+        "ALTER TABLE articles ADD COLUMN IF NOT EXISTS summary TEXT",
+        "ALTER TABLE articles ADD COLUMN IF NOT EXISTS image_url VARCHAR(1024)",
+    ]
+    with engine.begin() as conn:
+        for stmt in statements:
+            conn.execute(text(stmt))
+    typer.echo("Migration schema terminée.")
 
 
 @app.command()

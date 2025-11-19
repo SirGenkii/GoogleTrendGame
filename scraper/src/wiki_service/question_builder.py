@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .models import Article, ArticleSemesterStat, ArticleTheme, Question, QuestionArticle, Theme
 from .wikimedia_client import WikimediaClient
+from .wiki_page_client import WikiPageClient
 
 
 @dataclass
@@ -46,12 +47,34 @@ def ensure_article(session: Session, title: str, project: str) -> Article:
     article = session.scalar(
         select(Article).where(Article.project == project, Article.slug == slug)
     )
-    if article:
-        return article
-    article = Article(project=project, slug=slug, title=title)
-    session.add(article)
+    if not article:
+        article = Article(project=project, slug=slug, title=title)
+        session.add(article)
+        session.flush()
+    update_article_metadata(article)
     session.flush()
     return article
+
+
+_page_client: Optional[WikiPageClient] = None
+
+
+def update_article_metadata(article: Article) -> None:
+    global _page_client
+    if article.summary and article.image_url:
+        return
+    if not _page_client:
+        _page_client = WikiPageClient()
+    try:
+        data = _page_client.fetch_summary(article.slug)
+    except Exception:
+        return
+    if not data:
+        return
+    article.title = data.get("title") or article.title
+    article.page_id = data.get("page_id") or article.page_id
+    article.summary = data.get("summary") or article.summary
+    article.image_url = data.get("image_url") or article.image_url
 
 
 def link_article_theme(session: Session, article: Article, theme: Theme) -> None:
